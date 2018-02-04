@@ -1,0 +1,128 @@
+
+--'*******************************************************************************
+--'   **   **   **   **   **    **   **   **      SLEEP_AMK          **   **   **   **   **    **   **   **   **
+--'*******************************************************************************
+function reduce_need_sleep(time)
+	local tmp=amk.load_variable("gg_need_sleep",0)
+	tmp=tmp-time*120
+	if tmp<0 then tmp=0 end
+	amk.save_variable("gg_need_sleep_nrg",0)
+	amk.save_variable("block_sleep_menu",0)
+	amk.save_variable("gg_need_sleep",tmp)
+	test_sleep_pp()
+end
+
+function test_for_need_sleep()
+	if sleep_manager.is_sleep_active() == false then 
+		amk.save_variable("gg_need_sleep",amk.load_variable("gg_need_sleep",0)+1) 
+		test_sleep_pp()
+	end
+	amk.g_start_timer("gg_need_sleep",0,0,6)
+end
+
+function test_sleep_pp()
+	local tmp=amk.load_variable("gg_need_sleep",0)
+	if tmp>360 then
+		sleep_manager.main(5+amk.load_variable("gg_need_sleep_nrg",0))
+	end
+	if tmp>300 then
+		level.add_pp_effector("yantar_underground_psi.ppe", 999, true)
+		level.set_pp_effector_factor(999, 5.0)  
+	end
+	if tmp<=300 then
+		level.remove_pp_effector(999)
+	end
+end
+
+function check_sleep_item(obj)
+	local section = obj:section()
+	local stype=nil
+	
+	if section=="energy_drink" then
+		stype="nrg"
+	--'elseif (section=="medkit" or section=="medkit_army" or section=="medkit_scientic") then
+	--'	stype="med"
+	elseif section=="matras" then
+		stype="matras"
+	elseif section=="repbox_s1" then
+		amk.start_timer("sleep_repbox",0.1,amk.pack_array_to_string( {obj:id(), obj:condition(), 1} ))
+	elseif section=="repbox_s2" then
+		amk.start_timer("sleep_repbox",0.1,amk.pack_array_to_string( {obj:id(), obj:condition(), 2} ))
+	elseif section=="treasure_item" then
+		stype="tr_item"
+	end
+ 
+	if stype~=nil then
+		amk.start_timer("sleep_"..stype,0.1,obj:id())
+	end
+end
+
+function test_for_need_sleep_nrg(oid)
+	if alife():object(oid)==nil then
+		local n=amk.load_variable("gg_need_sleep_nrg",0)
+		if n<3 then
+			amk.save_variable("gg_need_sleep_nrg",n+1)
+			amk.save_variable("gg_need_sleep",amk.load_variable("gg_need_sleep",0)-30+n*10) 
+			test_sleep_pp()
+		end  
+		
+		!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		tu sa ma zrusit timer na blokovania okna spanku
+		a zaroven ulozit block_sleep_menu s '0'
+		
+		
+		
+		amk.save_variable("block_sleep_menu",0)
+	end
+end
+--[[
+function test_for_need_sleep_med(oid)
+	if alife():object(oid)==nil then
+		amk.save_variable("gg_need_sleep",amk.load_variable("gg_need_sleep",0)+5) 
+		test_sleep_pp()
+	end
+end
+]]--
+function test_for_need_sleep_matras(oid)
+	if alife():object(oid)==nil then
+		local enemy=false
+		for a=0,65534 do
+			local obj=level.object_by_id(a)
+			if obj then
+				if (( IsStalker(obj) and amk.get_npc_relation(obj,db.actor)=="enemy" ) or 
+					IsMonster(obj)) and obj:position():distance_to(db.actor:position())<40 
+					and obj:see(db.actor) then
+					enemy=true
+					break
+				end
+			end
+		end
+		
+		
+		!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		tu sa kontroluje ci sa otvori okno v zavislosti od potreby spanku alebo blokovania okna
+		block_sleep_menu a gg_need_sleep
+		
+		
+		if enemy==true then
+			amk.send_tip(game.translate_string("not_need_sleep_enemy"),nil,nil,5)
+		else
+			if amk.load_variable("blowout",-1)>-1 and amk.load_variable("blowout",-1)<5 then
+				amk.send_tip(game.translate_string("blowout_not_sleep"),nil,nil,5)
+			else
+				local spwn=ui_cheat.cheat(get_hud())
+				level.start_stop_menu(spwn,true)
+			end
+		 end
+	    amk.spawn_item_in_inv("matras")
+	end
+end
+
+function test_for_need_sleep_tr_item(oid)
+	if alife():object(oid)==nil then
+	    if news_main then
+	      news_main.create_treasurebox()
+	    end
+	end
+end
+
